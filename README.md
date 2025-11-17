@@ -1,5 +1,5 @@
 # 1024 game (compact interface)
-## 1024 game introduction
+## introduction
 - 4x4 grid, target 1024
 - Direction keys / WASD control
 - Can undo (max undos is 3)
