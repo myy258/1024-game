@@ -31,11 +31,11 @@ MAX_UNDOS = 3  # 每局最多可撤销次数
 # Spawn distribution / 可修改：数值越大权重越小
 # 完整分布（当存在 >=64 时使用）
 SPAWN_VALUES_FULL = [2, 4, 8, 16, 32, 64]
-SPAWN_WEIGHTS_FULL = [600, 250, 90, 40, 15, 5]
+SPAWN_WEIGHTS_FULL = [600, 250, 90, 30, 10, 1]
 
 # 受限分布（在未合成出 64 之前使用，只出现 2/4/8）
 SPAWN_VALUES_SMALL = [2, 4, 8]
-SPAWN_WEIGHTS_SMALL = [800, 160, 40]
+SPAWN_WEIGHTS_SMALL = [800, 160, 30]
 
 # color mapping
 COLOR_MAP = {
@@ -396,4 +396,5 @@ if __name__ == "__main__":
         root.mainloop()
     except KeyboardInterrupt:
         pass
+
 
