@@ -3,12 +3,21 @@
 """
 1024 - Compact (220x280) - Tkinter
 紧凑版界面（220x280），保留核心玩法与快捷键：
-- 4x4 网格，阶段性目标：先达 1024 然后继续挑战 2048
+- 4x4 网格，阶段性目标：先达 1024（提示）然后继续挑战 2048
 - 方向键 / WASD 控制
 - 撤销（Undo，最多使用次数可配置）、新游戏（New Game）
+- 保存最高分到 game1024_compact_highscore.json
+- Ctrl+M 最小化，Ctrl+Q 退出
+
+改动说明：
+- 格子内数字字体改为自适应：会根据 CELL_SIZE 自动缩放字体，尽量完整显示多位数字。
+- 其它交互（键盘绑定、生成分布、撤销限制、无 footer、目标升级等）保持不变。
+
+运行：python game_1024_compact.py
 """
 import tkinter as tk
 from tkinter import messagebox
+import tkinter.font as tkfont
 import random
 import json
 import os
@@ -19,9 +28,9 @@ HS_FILE = "game1024_compact_highscore.json"
 SIZE = 4
 
 # Compact layout settings
-WINDOW_W = 220
+WINDOW_W = 300
 WINDOW_H = 280
-CELL_SIZE = 40   # each cell pixel size
+CELL_SIZE = 50   # each cell pixel size
 CELL_PAD = 4     # gap between cells
 BOARD_BG = "#bbada0"
 
@@ -63,6 +72,9 @@ class Game1024Compact:
         self.root.geometry(f"{WINDOW_W}x{WINDOW_H}")
         self.root.resizable(False, False)
 
+        # font name baseline (we will compute sizes dynamically)
+        self.font_family = "Helvetica"
+
         # top bar small: score and best, buttons compressed
         top = tk.Frame(root)
         top.pack(padx=6, pady=(6, 2), fill="x")
@@ -70,23 +82,23 @@ class Game1024Compact:
         self.score = 0
         self.best = self.load_best()
 
-        lbl_font = ("Helvetica", 9, "bold")
-        btn_font = ("Helvetica", 8)
+        lbl_font = (self.font_family, 9, "bold")
+        btn_font = (self.font_family, 8)
 
         self.score_label = tk.Label(top, text=f"Score: {self.score}", font=lbl_font)
-        self.score_label.pack(side="left", padx=(0,6))
+        self.score_label.pack(side="left", padx=(0,1))
         self.best_label = tk.Label(top, text=f"Best: {self.best}", font=lbl_font)
-        self.best_label.pack(side="left", padx=(0,6))
+        self.best_label.pack(side="left", padx=(0,1))
         # add goal label to show current objective (starts at 1024)
         self.goal = 1024
         self.goal_label = tk.Label(top, text=f"Goal: {self.goal}", font=lbl_font)
-        self.goal_label.pack(side="left", padx=(0,6))
+        self.goal_label.pack(side="left", padx=(0,1))
 
         btn_frame = tk.Frame(top)
-        btn_frame.pack(side="right")
-        self.new_btn = tk.Button(btn_frame, text="New", command=self.new_game, width=6, font=btn_font)
+        btn_frame.pack(side="left")
+        self.new_btn = tk.Button(btn_frame, text="New", command=self.new_game, width=5, font=btn_font)
         self.new_btn.pack(side="left", padx=2)
-        self.undo_btn = tk.Button(btn_frame, text="Undo", command=self.undo, width=6, font=btn_font)
+        self.undo_btn = tk.Button(btn_frame, text="Undo", command=self.undo, width=5, font=btn_font)
         self.undo_btn.pack(side="left", padx=2)
 
         # board frame sized tightly
@@ -96,12 +108,16 @@ class Game1024Compact:
         self.cell_frames = [[None]*SIZE for _ in range(SIZE)]
         self.cells = [[None]*SIZE for _ in range(SIZE)]
 
+        # We'll keep a small font cache to avoid recreating identical fonts often
+        self._font_cache = {}  # key: (text) -> tkfont.Font
+
         for r in range(SIZE):
             for c in range(SIZE):
                 f = tk.Frame(board_frame, bg="#cdc1b4", width=CELL_SIZE, height=CELL_SIZE)
                 f.grid(row=r, column=c, padx=CELL_PAD, pady=CELL_PAD)
                 f.grid_propagate(False)
-                lbl = tk.Label(f, text="", bg="#cdc1b4", fg="#776e65", font=("Helvetica", 12, "bold"))
+                # initial label with some default small font; will be adjusted in update_ui
+                lbl = tk.Label(f, text="", bg="#cdc1b4", fg="#776e65", font=(self.font_family, 12, "bold"))
                 lbl.place(relx=0.5, rely=0.5, anchor="center")
                 self.cell_frames[r][c] = f
                 self.cells[r][c] = lbl
@@ -181,7 +197,7 @@ class Game1024Compact:
             messagebox.showinfo("Undo", "The number of retractions has been exhausted.")
             return
         if self.prev_grid is None:
-            messagebox.showinfo("Undo", "There are no operations that can be revoked。")
+            messagebox.showinfo("Undo", "There are no operations that can be revoked.")
             return
         # 执行撤销
         self.grid = copy.deepcopy(self.prev_grid)
@@ -230,6 +246,47 @@ class Game1024Compact:
 
         self.grid[r][c] = val
 
+    def _get_adaptive_font(self, text):
+        """
+        根据 CELL_SIZE 返回一个 tkfont.Font，使 text 在单元格内尽量大且不溢出。
+        使用简单递减尝试并缓存结果（按文本字符分组缓存）。
+        """
+        if not text:
+            return tkfont.Font(family=self.font_family, size=10, weight="bold")
+
+        # cache key can be text length plus text itself to be safe
+        key = ("txt", text, CELL_SIZE)
+        if key in self._font_cache:
+            return self._font_cache[key]
+
+        # available pixel area inside the cell (leave a small margin)
+        max_w = CELL_SIZE - 8
+        max_h = CELL_SIZE - 8
+
+        # start from a reasonable max font size (based on cell size)
+        # heuristic: font size roughly half of CELL_SIZE is a good starting point
+        start_size = max(6, int(CELL_SIZE * 0.5))
+        # but also ensure it is not absurdly large
+        max_start = max(start_size, 24)
+        size = max_start
+
+        # Try decreasing size until it fits both width and height
+        # create font and measure
+        while size >= 6:
+            f = tkfont.Font(family=self.font_family, size=size, weight="bold")
+            tw = f.measure(text)
+            th = f.metrics("linespace")
+            if tw <= max_w and th <= max_h:
+                # good fit
+                self._font_cache[key] = f
+                return f
+            size -= 1
+
+        # fallback smallest font
+        f = tkfont.Font(family=self.font_family, size=6, weight="bold")
+        self._font_cache[key] = f
+        return f
+
     def update_ui(self):
         for r in range(SIZE):
             for c in range(SIZE):
@@ -238,7 +295,16 @@ class Game1024Compact:
                 bg, fg = color_for(val)
                 frame = self.cell_frames[r][c]
                 frame.config(bg=bg)
-                lbl.config(text=str(val) if val != 0 else "", bg=bg, fg=fg)
+                text = str(val) if val != 0 else ""
+                lbl.config(text=text, bg=bg, fg=fg)
+                # adaptive font
+                if text:
+                    font_obj = self._get_adaptive_font(text)
+                    lbl.config(font=font_obj)
+                else:
+                    # empty slot: set a small default font
+                    lbl.config(font=(self.font_family, 10, "bold"))
+
         self.score_label.config(text=f"Score: {self.score}")
         if self.score > self.best:
             self.best = self.score
@@ -396,5 +462,3 @@ if __name__ == "__main__":
         root.mainloop()
     except KeyboardInterrupt:
         pass
-
-
