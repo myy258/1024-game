@@ -6,14 +6,6 @@
 - 4x4 网格，阶段性目标：先达 1024（提示）然后继续挑战 2048
 - 方向键 / WASD 控制
 - 撤销（Undo，最多使用次数可配置）、新游戏（New Game）
-- 保存最高分到 game1024_compact_highscore.json
-- Ctrl+M 最小化，Ctrl+Q 退出
-
-改动说明：
-- 格子内数字字体改为自适应：会根据 CELL_SIZE 自动缩放字体，尽量完整显示多位数字。
-- 其它交互（键盘绑定、生成分布、撤销限制、无 footer、目标升级等）保持不变。
-
-运行：python game_1024_compact.py
 """
 import tkinter as tk
 from tkinter import messagebox
@@ -462,3 +454,4 @@ if __name__ == "__main__":
         root.mainloop()
     except KeyboardInterrupt:
         pass
+
