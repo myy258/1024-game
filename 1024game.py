@@ -3,19 +3,9 @@
 """
 1024 - Compact (220x280) - Tkinter
 紧凑版界面（220x280），保留核心玩法与快捷键：
-- 4x4 网格，阶段性目标：先达 1024（提示）然后继续挑战 2048
+- 4x4 网格，阶段性目标：先达 1024 然后继续挑战 2048
 - 方向键 / WASD 控制
 - 撤销（Undo，最多使用次数可配置）、新游戏（New Game）
-- 保存最高分到 game1024_compact_highscore.json
-- Ctrl+M 最小化，Ctrl+Q 退出
-
-改动说明：
-- 新增阶段目标：游戏默认目标为 1024；首次到达 1024 时弹窗提示并把目标升级为 2048；
-  达到 2048 时弹窗提示最终胜利。
-- 在顶部显示当前目标（Goal: 1024 / Goal: 2048）。
-- 其它交互（键盘绑定、生成分布、撤销限制、无 footer 等）保持不变。
-
-运行：python game_1024_compact.py
 """
 import tkinter as tk
 from tkinter import messagebox
@@ -406,3 +396,4 @@ if __name__ == "__main__":
         root.mainloop()
     except KeyboardInterrupt:
         pass
+
