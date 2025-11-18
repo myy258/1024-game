@@ -188,10 +188,10 @@ class Game1024Compact:
         remaining = MAX_UNDOS - self.undos_used
         if remaining <= 0:
             # safety: should be disabled already
-            messagebox.showinfo("Undo", "撤销次数已用尽。")
+            messagebox.showinfo("Undo", "The number of retractions has been exhausted.")
             return
         if self.prev_grid is None:
-            messagebox.showinfo("Undo", "没有可以撤销的操作。")
+            messagebox.showinfo("Undo", "There are no operations that can be revoked。")
             return
         # 执行撤销
         self.grid = copy.deepcopy(self.prev_grid)
@@ -352,10 +352,10 @@ class Game1024Compact:
         # 检查最终胜利（当目标为 2048 且已达成）
         if self.check_win():
             self.update_ui()
-            messagebox.showinfo("You win!", f"恭喜，你达成 {self.goal}！分数：{self.score}")
+            messagebox.showinfo("You win!", f"Congratulations, you have achieved it {self.goal}！score：{self.score}")
         elif self.check_gameover():
             self.update_ui()
-            messagebox.showinfo("Game Over", f"没有可用的移动了。分数：{self.score}")
+            messagebox.showinfo("Game Over", f"There are no available moves left. score：{self.score}")
 
     def check_and_upgrade_goal(self):
         """如果当前棋盘达到了当前 goal：
@@ -368,7 +368,7 @@ class Game1024Compact:
                 # 升级为 2048，提示并继续游戏
                 self.goal = 2048
                 self.goal_label.config(text=f"Goal: {self.goal}")
-                messagebox.showinfo("Milestone", "恭喜你达成 1024！挑战 2048 开始！")
+                messagebox.showinfo("Milestone", "Congratulations, you have achieved 1024！Challenge 2048 begins！")
             # if already 2048, leave for check_win to show final message
 
     def check_win(self):
