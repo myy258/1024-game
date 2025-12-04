@@ -20,23 +20,24 @@ HS_FILE = "game1024_compact_highscore.json"
 SIZE = 4
 
 # Compact layout settings
-WINDOW_W = 300
-WINDOW_H = 280
-CELL_SIZE = 50   # each cell pixel size
+WINDOW_W = 140
+WINDOW_H = 160
+CELL_SIZE = 20   # each cell pixel size
 CELL_PAD = 4     # gap between cells
 BOARD_BG = "#bbada0"
 
 # Undo limit
 MAX_UNDOS = 3  # 每局最多可撤销次数
+CONTINUE_AFTER_2048 = True # 达到 2048 后是否允许继续游戏（True: 继续；False: 弹出胜利对话框并停止）
 
 # Spawn distribution / 可修改：数值越大权重越小
 # 完整分布（当存在 >=64 时使用）
 SPAWN_VALUES_FULL = [2, 4, 8, 16, 32, 64]
-SPAWN_WEIGHTS_FULL = [600, 250, 90, 30, 10, 1]
+SPAWN_WEIGHTS_FULL = [600, 250, 80, 25, 3, 0.1]
 
 # 受限分布（在未合成出 64 之前使用，只出现 2/4/8）
 SPAWN_VALUES_SMALL = [2, 4, 8]
-SPAWN_WEIGHTS_SMALL = [800, 160, 30]
+SPAWN_WEIGHTS_SMALL = [800, 160, 20]
 
 # color mapping
 COLOR_MAP = {
@@ -175,6 +176,7 @@ class Game1024Compact:
         # reset undo counter & goal for new game
         self.undos_used = 0
         self.update_undo_button()
+        self._shown_2048_popup = False
         self.goal = 1024
         self.goal_label.config(text=f"Goal: {self.goal}")
         self.spawn()
@@ -349,7 +351,13 @@ class Game1024Compact:
         for _ in range(times):
             g = self.rotate_clock(g)
         return g
-
+    
+    def flash_title(self, text, duration=1100):
+        """短暂把窗口标题改为 text，然后恢复原标题"""
+        old = self.root.title()
+        self.root.title(text)
+        self.root.after(duration, lambda: self.root.title(old))
+        
     def move(self, direction):
         """
         使用显式旋转次数把任意方向转换为向左移动，映射为：
@@ -397,13 +405,35 @@ class Game1024Compact:
         # 检查并升级阶段目标（1024 -> 2048）
         self.check_and_upgrade_goal()
 
-        # 检查最终胜利（当目标为 2048 且已达成）
-        if self.check_win():
-            self.update_ui()
-            messagebox.showinfo("You win!", f"Congratulations, you have achieved it {self.goal}！score：{self.score}")
-        elif self.check_gameover():
-            self.update_ui()
-            messagebox.showinfo("Game Over", f"There are no available moves left. score：{self.score}")
+        current_max = max(self.grid[r][c] for r in range(SIZE) for c in range(SIZE))
+        if current_max >= self.goal:
+            if self.goal >= 2048:
+                # 已经到达或超过 2048（最终目标）
+                if CONTINUE_AFTER_2048:
+                    if not getattr(self, "_shown_2048_popup", False):
+                        messagebox.showinfo("Milestone", f"Congratulations, you are the first time to achieve {self.goal}！Keep going！")
+                        self._shown_2048_popup = True
+                    else:
+                        # 非阻塞性提醒，允许继续游戏
+                        self.flash_title(f"Reached {self.goal}! Keep going...")
+                else:
+                    # 传统阻塞胜利提示
+                    messagebox.showinfo("You win!", f"Congratulations, you have achieved it {self.goal}！score：{self.score}")
+            else:
+                # 其他（例如刚达到 1024 时已在 check_and_upgrade_goal 升级）
+                pass
+     
+        # 游戏结束检查（仍然保留）
+        if not (CONTINUE_AFTER_2048 and self.goal >= 2048 and current_max >= 2048):
+            # 当允许继续且已达 2048 时不要用弹窗判定为“最终胜利”
+            if self.check_gameover():
+                self.update_ui()
+                messagebox.showinfo("Game Over", f"There are no available moves left. score：{self.score}")
+        else:
+            # 如果允许继续并且已达2048，则只在完全无路可走时提示 Game Over
+            if self.check_gameover():
+                self.update_ui()
+                messagebox.showinfo("Game Over", f"There are no available moves left. score：{self.score}")
 
     def check_and_upgrade_goal(self):
         """如果当前棋盘达到了当前 goal：
@@ -418,7 +448,6 @@ class Game1024Compact:
                 self.goal_label.config(text=f"Goal: {self.goal}")
                 messagebox.showinfo("Milestone", "Congratulations, you have achieved 1024！Challenge 2048 begins！")
             # if already 2048, leave for check_win to show final message
-
     def check_win(self):
         """只有当当前 goal 为 2048 且棋盘上存在 >=2048 时才视为最终胜利"""
         if self.goal != 2048:
@@ -454,4 +483,3 @@ if __name__ == "__main__":
         root.mainloop()
     except KeyboardInterrupt:
         pass
-
